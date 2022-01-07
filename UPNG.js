@@ -1,3 +1,4 @@
+import { deflate } from "https://taisukef.github.io/zlib.js/es/deflate.js";
 
 var UPNG = {};
 
@@ -810,7 +811,8 @@ UPNG.encode._filterZero = function(img,h,bpp,bpl,data, filter, levelZero)
 	var opts;  if(levelZero) opts={level:0};
 	
 	
-	var CMPR = (data.length>10e6 && UZIP!=null) ? UZIP : pako;
+	//var CMPR = (data.length>10e6 && UZIP!=null) ? UZIP : pako;
+	const CMPR = { deflate };
 	
 	var time = Date.now();
 	for(var i=0; i<ftry.length; i++) {
@@ -1105,3 +1107,5 @@ UPNG.encode.dither = function(sb, w, h, plte, tb, oind) {
 		}
 	}
 }
+
+export { UPNG };
