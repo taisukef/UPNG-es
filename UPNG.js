@@ -194,6 +194,26 @@ UPNG.decode = function(buff)
 			else if(out.ctype==2 || out.ctype==6) out.tabs[type] = [rUs(data, offset), rUs(data, offset+2), rUs(data, offset+4)];
 			else if(out.ctype==3) out.tabs[type] = data[offset];
 		}
+		else if (type == "iCCP") {
+			let off = offset;
+			let nz = bin.nextZero(data, off);
+			const keyw = bin.readASCII(data, off, nz - off);
+			off = nz;
+			const zero = data[off++];
+			if (zero != 0) {
+				throw "illegal iCCP, zero must by 0";
+			}
+			const comptype = data[off++];
+			if (comptype != 0) {
+				throw "illegal iCCP, comptype must by 0 " + comptype;
+			}
+			console.log(keyw);
+			const tl = len - (off - offset);
+			const buf = UPNG.decode._inflate(data.slice(off, off + tl));
+			//Deno.writeFileSync("png.icc", buf);
+			//console.log(buf);
+			out.icc = buf;
+		}
 		else if(type=="IEND") {
 			break;
 		}
