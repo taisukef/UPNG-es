@@ -17,7 +17,7 @@ for (let i = 0; i < h; i++) {
   }
 }
 const imgFile = UPNG.encodeLL([im1.buffer], w, h, 1, 0, 16, [0]);
-await Deno.writeFile("test-16bit.png", new Uint8Array(imgFile));
+await Deno.writeFile("test-16bit.png", imgFile);
 
 const imgFile2 = UPNG.encodeLL([im2.buffer], w, h, 1, 0, 8, [0]);
-await Deno.writeFile("test-8bit.png", new Uint8Array(imgFile2));
+await Deno.writeFile("test-8bit.png", imgFile2);

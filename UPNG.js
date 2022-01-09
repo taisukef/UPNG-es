@@ -98,7 +98,8 @@ UPNG.toRGBA8.decodeImage = function(data, w, h, out)
 
 UPNG.decode = function(buff)
 {
-	var data = new Uint8Array(buff), offset = 8, bin = UPNG._bin, rUs = bin.readUshort, rUi = bin.readUint;
+	var data = buff instanceof ArrayBuffer ? new Uint8Array(buff) : buff;
+	var offset = 8, bin = UPNG._bin, rUs = bin.readUshort, rUi = bin.readUint;
 	var out = {tabs:{}, frames:[]};
 	var dd = new Uint8Array(data.length), doff = 0;	 // put all IDAT data into it
 	var fd, foff = 0;	// frames
@@ -556,7 +557,7 @@ UPNG.encode._main = function(nimg, w, h, dels, tabs) {
 	wAs(data,offset,"IEND");  offset+=4;
 	wUi(data,offset,crc(data,offset-4,4));  offset+=4; // crc
 
-	return data.buffer;
+	return data;
 }
 
 UPNG.encode.compressPNG = function(out, filter, levelZero) {
