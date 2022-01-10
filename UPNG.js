@@ -1,7 +1,19 @@
 import { deflate } from "https://taisukef.github.io/zlib.js/es/deflate.js";
+import { inflate } from "https://taisukef.github.io/zlib.js/es/inflate.js";
 import { rawinflate } from "https://taisukef.github.io/zlib.js/es/rawinflate.js";
 
 const UPNG = {};
+
+/*
+	// ctype & 4 : alpha
+	// ctype & 2 : RGB
+	// ctype & 1 : palette
+	ctype==6 // RGB + alpha
+	ctype==2 // RGB
+	ctype==3 // palette
+	ctype==4 // gray + alpha
+	ctype==0 // gray
+*/
 
 UPNG.toRGBA8 = function(out)
 {
@@ -196,6 +208,7 @@ UPNG.decode = function(buff)
 			else if(out.ctype==3) out.tabs[type] = data[offset];
 		}
 		else if (type == "iCCP") {
+			console.log("offset", offset, "len", len) // offset 41 3178
 			let off = offset;
 			let nz = bin.nextZero(data, off);
 			const keyw = bin.readASCII(data, off, nz - off);
@@ -208,11 +221,10 @@ UPNG.decode = function(buff)
 			if (comptype != 0) {
 				throw "illegal iCCP, comptype must by 0 " + comptype;
 			}
-			console.log(keyw);
+			//console.log("iCCP", keyw); // keyw == "ICC Profile"
 			const tl = len - (off - offset);
-			const buf = UPNG.decode._inflate(data.slice(off, off + tl));
-			//Deno.writeFileSync("png.icc", buf);
-			//console.log(buf);
+			const raw = data.slice(off, off + tl);
+			const buf = inflate(raw);
 			out.icc = buf;
 		}
 		else if(type=="IEND") {
@@ -414,12 +426,7 @@ UPNG._copyTile = function(sb, sw, sh, tb, tw, th, xoff, yoff, mode)
 	return true;
 }
 
-
-
-
-
-UPNG.encode = function(bufs, w, h, ps, dels, tabs, forbidPlte)
-{
+UPNG.encode = function(bufs, w, h, ps, dels, tabs, forbidPlte) {
 	if(ps==null) ps=0;
 	if(forbidPlte==null) forbidPlte = false;
 
@@ -429,7 +436,18 @@ UPNG.encode = function(bufs, w, h, ps, dels, tabs, forbidPlte)
 	return UPNG.encode._main(nimg, w, h, dels, tabs);
 }
 
-UPNG.encodeLL = function(bufs, w, h, cc, ac, depth, dels, tabs) {
+UPNG.encodeLL = function(bufs, w, h, cc, ac, depth, dels, tabs, icc) {
+	if (!Array.isArray(bufs) && typeof bufs == "object") {
+		const img = bufs;
+		bufs = [img.data];
+		w = img.width;
+		h = img.height;
+		cc = img.ctype & 2 ? 3 : 1; // color channel 1 or 3
+		ac = img.ctype & 4 ? 1 : 0; // alpha channel 0 or 1
+		depth = img.depth;
+		dels = 0;
+		icc = img.icc;
+	}
 	var nimg = {  ctype: 0 + (cc==1 ? 0 : 2) + (ac==0 ? 0 : 4),      depth: depth,  frames: []  };
 	
 	var time = Date.now();
@@ -439,17 +457,24 @@ UPNG.encodeLL = function(bufs, w, h, cc, ac, depth, dels, tabs) {
 	
 	UPNG.encode.compressPNG(nimg, 0, true);
 	
-	var out = UPNG.encode._main(nimg, w, h, dels, tabs);
+	var out = UPNG.encode._main(nimg, w, h, dels, tabs, icc);
 	return out;
 }
-
-UPNG.encode._main = function(nimg, w, h, dels, tabs) {
+UPNG.encode._main = function(nimg, w, h, dels, tabs, icc) {
 	if(tabs==null) tabs={};
 	var crc = UPNG.crc.crc, wUi = UPNG._bin.writeUint, wUs = UPNG._bin.writeUshort, wAs = UPNG._bin.writeASCII;
 	var offset = 8, anim = nimg.frames.length>1, pltAlpha = false;
 	
 	var leng = 8 + (16+5+4) /*+ (9+4)*/ + (anim ? 20 : 0);
-	if(tabs["sRGB"]!=null) leng += 8+1+4;
+	let cicc = null;
+	let lenicc = 0;
+	if (icc) {
+		cicc = deflate(icc);
+		lenicc = "ICC Profile".length + 1 + 1 + cicc.length;
+		leng += 8 + lenicc;
+	} else if (tabs["sRGB"]) {
+		leng += 8 + 1 + 4;
+	}
 	if(tabs["pHYs"]!=null) leng += 8+9+4;
 	if(nimg.ctype==3) {
 		var dl = nimg.plte.length;
@@ -481,7 +506,19 @@ UPNG.encode._main = function(nimg, w, h, dels, tabs) {
 	wUi(data,offset,crc(data,offset-17,17));  offset+=4; // crc
 
 	// 13 bytes to say, that it is sRGB
-	if(tabs["sRGB"]!=null) {
+	if (icc) {
+		wUi(data, offset, lenicc);      offset+=4;
+		const offset2 = offset;
+		wAs(data, offset, "iCCP");  offset+=4;
+		const iccp = "ICC Profile";
+		wAs(data, offset, iccp);  offset += iccp.length;
+		data[offset] = 0;  offset++;  // null separator
+		data[offset] = 0;  offset++;  // compress
+		for (let i = 0; i < cicc.length; i++) {
+			data[offset++] = cicc[i];
+		}
+		wUi(data, offset, crc(data, offset2, offset - offset2));  offset+=4; // crc
+	} else if (tabs["sRGB"]) {
 		wUi(data,offset, 1);      offset+=4;
 		wAs(data,offset,"sRGB");  offset+=4;
 		data[offset] = tabs["sRGB"];  offset++;

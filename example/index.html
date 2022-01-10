@@ -1,0 +1,30 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<body style="text-align: center">
+<h1>example 16bit PNG with ICC Profile</h1>
+<table style="display: inline-block">
+<tr>
+  <td>Rec. 2020</td><td>Display P3</td><td>sRGB</td>
+</tr>
+<tr>
+  <td><img src=test-16bit-color-rec2020.png></td>
+  <td><img src=test-16bit-color-displayp3.png></td>
+  <td><img src=test-16bit-color-srgb.png></td>
+</tr>
+</table>
+
+<div id=sel></div>
+<img id=chg>
+
+<footer style="border-top: 1px solid gray; margin-top: 2em; ">
+  <a href=https://github.com/taisukef/UPNG-es/>UPNG-es src on GitHub</a><br>
+  <a href=https://github.com/saucecontrol/Compact-ICC-Profiles>ICC Profile: Compact-ICC-Profiles</a><br>
+</footer>
+
+<script type="module">
+const tbl = document.body.querySelector("table");
+tbl.querySelectorAll("tr:nth-child(2) img").forEach((img, i) => img.onclick = () => {
+  const txt = tbl.querySelectorAll("tr:first-child td")[i].textContent;
+  sel.textContent = txt;
+  chg.src = img.src;
+});
+</script>

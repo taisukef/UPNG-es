@@ -1,4 +1,4 @@
-import { UPNG } from "./UPNG.js";
+import { UPNG } from "../UPNG.js";
 
 const w = 128;
 const hgrad = 8;
